@@ -1,5 +1,6 @@
 use core::num;
-use libc::{c_char, c_int, pid_t};
+use libc::{SIGKILL, c_char, c_int, kill, pid_t};
+use regex::Regex;
 use std::{ffi::CStr, mem};
 
 unsafe extern "C" {
@@ -13,6 +14,7 @@ unsafe extern "C" {
 }
 
 fn main() {
+    let re = Regex::new(r"^Discord(?: PTB| Canary)?(?: Helper(?: \([^)]+\))?)?$").unwrap();
     let (pid, name) = unsafe {
         let mut pids: [pid_t; 4096] = mem::zeroed();
         let pids_size = (pids.len() * std::mem::size_of::<pid_t>()) as i32;
@@ -27,8 +29,14 @@ fn main() {
             let mut name_buffer: [i8; 256] = mem::zeroed();
             let name_len = proc_name(pid, name_buffer.as_mut_ptr(), 256);
             if name_len > 0 {
-                let name_cstr = CStr::from_ptr(name_buffer.as_ptr());
-                println!("PID: {}  Name: {}", pid, name_cstr.to_string_lossy());
+                let name = CStr::from_ptr(name_buffer.as_ptr());
+                println!("PID: {}  Name: {}", pid, name.to_string_lossy());
+                let name = name.to_str().unwrap();
+                if re.is_match(&name) {
+                    println!("Killing {} (PID {})", name, pid);
+                    // Consider SIGTERM first (15); SIGKILL (9) if needed:
+                    let _ = kill(pid, SIGKILL);
+                }
             }
         }
 
@@ -36,5 +44,5 @@ fn main() {
     };
 
     // Outside unsafe, this is safe normal data
-    println!("PID {} name {}", pid, name);
+    // println!("PID {} name {}", pid, name);
 }
