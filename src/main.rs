@@ -1,6 +1,11 @@
-use libc::{c_char, c_int, kill, pid_t, SIGKILL};
+use libc::{SIGKILL, c_char, c_int, kill, pid_t, uint16_t};
 use regex::Regex;
-use std::{ffi::CStr, mem, thread::sleep, time::Duration};
+use std::{
+    ffi::CStr,
+    mem,
+    thread::sleep,
+    time::{Duration, Instant},
+};
 
 unsafe extern "C" {
     unsafe fn proc_listpids(
@@ -41,10 +46,24 @@ fn macos_kill_process() {
     }
 }
 
+const TWENTY_FIVE_MINUTES: u64 = 1500;
+enum Timer {
+    Pause,
+}
+
 fn main() {
-    loop {
-        #[cfg(target_os = "macos")]
-        macos_kill_process();
-        sleep(Duration::from_secs(3));
+    let now = Instant::now();
+    let timer = Duration::from_secs(10);
+
+    println!("Starting {:?} timer!", timer);
+
+    while now.elapsed() < timer {
+        print!("{:?}\r", timer - now.elapsed());
+
+        // #[cfg(target_os = "macos")]
+        // macos_kill_process();
+        // sleep(Duration::from_secs(3));
+        // sleep(Duration::from_nanos(100));
     }
+    print!("\x07");
 }
